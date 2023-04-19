@@ -67,11 +67,11 @@ async def main():
     while True:
         print_colored_text("\nInput:", "green")
         user_input = input("")
-        if user_input == "exit":
+        if user_input == ":exit":
             with open("conversation_ctx.json", "w") as json_file:
                 json.dump(context, json_file)
             break
-        if user_input == "save":
+        if user_input == ":save":
             try:
                 with open("conversation_ctx.json", "w") as json_file:
                     json.dump(context, json_file)
@@ -80,8 +80,8 @@ async def main():
                 print_colored_text(
                     f"Catch Exception {type(e).__name__}, Info: {e}", "red")
                 continue
-        if user_input.startswith("file:"):
-            filename = user_input[len("file:"):]
+        if user_input.startswith(":file:"):
+            filename = user_input[len(":file:"):]
             try:
                 with open(filename, "r") as prompt_file:
                     user_input = prompt_file.read()
