@@ -1,0 +1,23 @@
+NFT Project Name: Bored Ape Yacht Club
+
+Token Id: 3864
+background: army green, 12.43% have this
+clothes: a black holes t, 2.05% have this 
+eyes: bored, 17.14% have this
+fur: noise, 1.55% have this
+hat: fisherman, 3.45% have this
+mouth: bored bubblegum, 1.19% have this
+price: 65 ETH
+
+Token Id: 1191
+background: blue, 12.42% have this
+clothes: guayabera, 2.32% have this
+eyes: bloodshot, 8.46% have this 
+fur: robot, 2.65% have this
+hat: bowler, 2.62% have this 
+mouth: bored unshaven, 15.51% have this
+price: 66 ETH
+
+
+The text above descript:
+The NFT #3864 of Bored Ape Yacht Club, he has 
