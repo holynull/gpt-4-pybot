@@ -1,3 +1,4 @@
+import datetime
 import itertools
 import os
 import openai
@@ -100,15 +101,21 @@ async def main(context, model, tool):
         print_colored_text("\nInput:", "green")
         user_input = input("")
         if user_input == ":exit":
-            with open("conversation_ctx.json", "w") as json_file:
+            now = datetime.datetime.now()
+            formatted_date = now.strftime("%Y%m%d%H%M%S")
+            with open(formatted_date+"_ctx.json", "w") as json_file:
                 json.dump(context, json_file)
+                print_colored_text(
+                        "Save conversation to "+formatted_date+"_ctx.json", "blue")
             break
         if user_input == ":save":
             try:
-                with open("conversation_ctx.json", "w") as json_file:
+                now = datetime.datetime.now()
+                formatted_date = now.strftime("%Y%m%d%H%M%S")
+                with open(formatted_date+"_ctx.json", "w") as json_file:
                     json.dump(context, json_file)
                     print_colored_text(
-                        "Save conversation to conversation_ctx.json", "blue")
+                        "Save conversation to "+formatted_date+"_ctx.json", "blue")
                 continue
             except all as e:
                 print_colored_text(
@@ -134,9 +141,9 @@ async def main(context, model, tool):
             spinner_thread = executor.submit(spinning_slash, stop_event)
             try:
                 if tool == 'api':
-                    task = chatToModelHttp(context=context, model=model)
+                    task = chatToModelHttp(_ctx=context, model=model)
                 if tool == 'sdk':
-                    task = chatToModel(context=context, model=model)
+                    task = chatToModel(_ctx=context, model=model)
                 gpt4_task = asyncio.create_task(task)
                 response = await gpt4_task
                 stop_event.set()
@@ -147,10 +154,12 @@ async def main(context, model, tool):
                 print(response_txt)
                 context.append(
                     {"role": response_role, "content": response_txt})
-                with open("conversation_ctx.json", "w") as json_file:
+                now = datetime.datetime.now()
+                formatted_date = now.strftime("%Y%m%d%H%M%S")
+                with open(formatted_date+".tmp.json", "w") as json_file:
                     json.dump(context, json_file)
                     print_colored_text(
-                        "Save conversation to conversation_ctx.json", "blue")
+                        "Save conversation to "+formatted_date+".tmp.json", "blue")
             except all as e:
                 print_colored_text(
                     f"Catch Exception {type(e).__name__}, Info: {e}", "red")
