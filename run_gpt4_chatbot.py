@@ -75,6 +75,7 @@ async def chatToModel(_ctx, model):
     except all as e:
         print_colored_text(
             f"Catch Exception {type(e).__name__}, Info: {e}", "red")
+        return None
     finally:
         return response
 
@@ -91,8 +92,15 @@ async def chatToModelHttp(_ctx, model):
         'Content-Type': 'application/json',
         'Authorization': 'Bearer '+os.getenv("OPENAI_API_KEY")
     }
-    response = requests.post(url, json=data, headers=headers)
-    if response.status_code == 200:
+    try:
+        response = requests.post(url, json=data, headers=headers)
+        if response.status_code == 200:
+            return response.json()
+    except all as e:
+        print_colored_text(
+            f"Catch Exception {type(e).__name__}, Info: {e}", "red")
+        return None
+    finally:
         return response.json()
 
 
@@ -106,7 +114,7 @@ async def main(context, model, tool):
             with open(formatted_date+"_ctx.json", "w") as json_file:
                 json.dump(context, json_file)
                 print_colored_text(
-                        "Save conversation to "+formatted_date+"_ctx.json", "blue")
+                    "Save conversation to "+formatted_date+"_ctx.json", "blue")
             break
         if user_input == ":save":
             try:
@@ -147,23 +155,26 @@ async def main(context, model, tool):
                 gpt4_task = asyncio.create_task(task)
                 response = await gpt4_task
                 stop_event.set()
-                # finish_reason = response['choices'][0]['finish_reason']
-                response_txt = response['choices'][0]['message']["content"]
-                response_role = response['choices'][0]['message']["role"]
-                print_colored_text("\nGPT-4:", "green")
-                print(response_txt)
-                context.append(
-                    {"role": response_role, "content": response_txt})
-                now = datetime.datetime.now()
-                formatted_date = now.strftime("%Y%m%d%H%M%S")
-                with open(formatted_date+".tmp.json", "w") as json_file:
-                    json.dump(context, json_file)
-                    print_colored_text(
-                        "Save conversation to "+formatted_date+".tmp.json", "blue")
+                if response != None:
+                    # finish_reason = response['choices'][0]['finish_reason']
+                    response_txt = response['choices'][0]['message']["content"]
+                    response_role = response['choices'][0]['message']["role"]
+                    print_colored_text("\nGPT-4:", "green")
+                    print(response_txt)
+                    context.append(
+                        {"role": response_role, "content": response_txt})
+                    now = datetime.datetime.now()
+                    formatted_date = now.strftime("%Y%m%d%H%M%S")
+                    with open(formatted_date+".tmp.json", "w") as json_file:
+                        json.dump({"role": response_role,
+                                  "content": response_txt}, json_file)
+                        print_colored_text(
+                            "Save conversation to "+formatted_date+".tmp.json", "blue")
             except all as e:
                 print_colored_text(
                     f"Catch Exception {type(e).__name__}, Info: {e}", "red")
                 stop_event.set()
             finally:
                 spinner_thread.cancel()
+                stop_event.set()
 asyncio.run(main(context=context, model=model, tool=tool))
