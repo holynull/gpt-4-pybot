@@ -140,10 +140,13 @@ async def main(context, model, tool):
                 print_colored_text(
                     f"Catch Exception {type(e).__name__}, Info: {e}", "red")
                 continue
+        prompt = {"role": "user", "content": user_input}
         if user_input == ":regen":
+            prompt = context[len(context)-2]
             context = context[:-1]
+            print(prompt["content"])
         else:
-            context.append({"role": "user", "content": user_input})
+            context.append(prompt)
         stop_event = threading.Event()
         with ThreadPoolExecutor(max_workers=1) as executor:
             spinner_thread = executor.submit(spinning_slash, stop_event)
@@ -166,8 +169,10 @@ async def main(context, model, tool):
                     now = datetime.datetime.now()
                     formatted_date = now.strftime("%Y%m%d%H%M%S")
                     with open(formatted_date+".tmp.json", "w") as json_file:
-                        json.dump({"role": response_role,
-                                  "content": response_txt}, json_file)
+                        tmp = [prompt]
+                        tmp.append({"role": response_role,
+                                    "content": response_txt})
+                        json.dump(tmp, json_file)
                         print_colored_text(
                             "Save conversation to "+formatted_date+".tmp.json", "blue")
             except all as e:
