@@ -6,6 +6,9 @@ import asyncio
 import json
 import sys
 import argparse
+import requests
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 load_dotenv()
 parser = argparse.ArgumentParser(description='Chat to GPT4')
@@ -29,17 +32,12 @@ def print_colored_text(text, color):
     print(f"{color_code[color]}{text}{color_code['reset']}")
 
 
-async def spinning_slash():
-    # 定义一个斜杠列表
+def spinning_slash(stop_event):
     spinning_chars = itertools.cycle(['/', '-', '\\', '|'])
-    # spinning_chars = itertools.cycle('....')
-    # 不停地输出旋转斜杠
-    while True:
-        # print_colored_text(next(spinning_chars), "yellow")
+    while not stop_event.is_set():
         sys.stdout.write(next(spinning_chars))
-        # print_colored_text("Loading....","yellow")
         sys.stdout.flush()
-        await asyncio.sleep(0.5)
+        stop_event.wait(0.1)
         sys.stdout.write('\b')
 
 
@@ -54,13 +52,32 @@ if conversation_ctx != None:
 
 
 async def chatToGPT4(_ctx):
-    response = openai.ChatCompletion.create(
-        # model="davinci:ft-personal:metapath-2023-03-28-02-42-17",
-        model="gpt-4",
-        messages=_ctx,
-        temperature=1
-    )
-    return response
+    try:
+        response = openai.ChatCompletion.create(
+            # model="davinci:ft-personal:metapath-2023-03-28-02-42-17",
+            model="gpt-4",
+            messages=_ctx,
+            temperature=1
+        )
+    except all as e:
+        print_colored_text(
+                    f"Catch Exception {type(e).__name__}, Info: {e}", "red")
+    finally:
+        return response
+    # url = 'https://api.openai.com/v1/chat/completions'
+
+    # data = {
+    #     'model': 'gpt-4',
+    #     'messages': _ctx
+    # }
+
+    # headers = {
+    #     'Content-Type': 'application/json',
+    #     'Authorization': 'Bearer '+os.getenv("OPENAI_API_KEY")
+    # }
+    # response = requests.post(url, json=data, headers=headers)
+    # if response.status_code == 200:
+    #     return response.json()
 
 
 async def main():
@@ -93,19 +110,24 @@ async def main():
                 continue
         sys.stdout.write('\n')
         context.append({"role": "user", "content": user_input})
-        spinner_task = asyncio.create_task(spinning_loading())
-        try:
-            gpt4_task = asyncio.create_task(chatToGPT4(context))
-            response = await gpt4_task
-            # finish_reason = response['choices'][0]['finish_reason']
-            response_txt = response['choices'][0]['message']["content"]
-            response_role = response['choices'][0]['message']["role"]
-            print_colored_text("\nGPT-4:", "green")
-            print(response_txt)
-            context.append({"role": response_role, "content": response_txt})
-        except all as e:
-            print_colored_text(
-                f"Catch Exception {type(e).__name__}, Info: {e}", "red")
-        finally:
-            spinner_task.cancel()
+        stop_event = threading.Event()
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            spinner_thread = executor.submit(spinning_slash, stop_event)
+            try:
+                gpt4_task = asyncio.create_task(chatToGPT4(context))
+                response = await gpt4_task
+                stop_event.set()
+                # finish_reason = response['choices'][0]['finish_reason']
+                response_txt = response['choices'][0]['message']["content"]
+                response_role = response['choices'][0]['message']["role"]
+                print_colored_text("\nGPT-4:", "green")
+                print(response_txt)
+                context.append(
+                    {"role": response_role, "content": response_txt})
+            except all as e:
+                print_colored_text(
+                    f"Catch Exception {type(e).__name__}, Info: {e}", "red")
+                stop_event.set()
+            finally:
+                spinner_thread.cancel()
 asyncio.run(main())
