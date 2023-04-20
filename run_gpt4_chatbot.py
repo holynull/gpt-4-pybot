@@ -14,8 +14,20 @@ load_dotenv()
 parser = argparse.ArgumentParser(description='Chat to GPT4')
 parser.add_argument('-c', '--conversation_ctx',
                     help='Conversation context file')
+parser.add_argument('-m', '--model',
+                    help='Model Id, default gpt-4')
+parser.add_argument('-t', '--tool',
+                    help='Use sdk or http api (sdk or api), default api')
 args = parser.parse_args()
 conversation_ctx = args.conversation_ctx
+if args.model == None:
+    model = 'gpt-4'
+else:
+    model = args.model
+if args.tool == None:
+    tool = 'api'
+else:
+    tool = args.tool
 
 
 def print_colored_text(text, color):
@@ -51,11 +63,11 @@ if conversation_ctx != None:
         context = json.load(file)
 
 
-async def chatToGPT4(_ctx):
+async def chatToModel(_ctx, model):
     try:
         response = openai.ChatCompletion.create(
             # model="davinci:ft-personal:metapath-2023-03-28-02-42-17",
-            model="gpt-4",
+            model=model,
             messages=_ctx,
             temperature=1
         )
@@ -66,11 +78,11 @@ async def chatToGPT4(_ctx):
         return response
 
 
-async def chatToGPT4Http(_ctx):
+async def chatToModelHttp(_ctx, model):
     url = 'https://api.openai.com/v1/chat/completions'
 
     data = {
-        'model': 'gpt-4',
+        'model': model,
         'messages': _ctx
     }
 
@@ -83,7 +95,7 @@ async def chatToGPT4Http(_ctx):
         return response.json()
 
 
-async def main(context):
+async def main(context, model, tool):
     while True:
         print_colored_text("\nInput:", "green")
         user_input = input("")
@@ -121,7 +133,11 @@ async def main(context):
         with ThreadPoolExecutor(max_workers=1) as executor:
             spinner_thread = executor.submit(spinning_slash, stop_event)
             try:
-                gpt4_task = asyncio.create_task(chatToGPT4Http(context))
+                if tool == 'api':
+                    task = chatToModelHttp(context=context, model=model)
+                if tool == 'sdk':
+                    task = chatToModel(context=context, model=model)
+                gpt4_task = asyncio.create_task(task)
                 response = await gpt4_task
                 stop_event.set()
                 # finish_reason = response['choices'][0]['finish_reason']
@@ -141,4 +157,4 @@ async def main(context):
                 stop_event.set()
             finally:
                 spinner_thread.cancel()
-asyncio.run(main(context=context))
+asyncio.run(main(context=context, model=model, tool=tool))
