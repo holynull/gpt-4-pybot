@@ -21,3 +21,5 @@ You can load an conversation context file throuth `-c`, e.g. `-c conversation_ct
 You can input `:file:` before a content file name as the input message's content. e.g `file:prompts_template_0.txt`
 
 Ensure the save conversation history data, you can input `:save` to save conversation context data.
+
+Input `:regen` to regenerate the last response.

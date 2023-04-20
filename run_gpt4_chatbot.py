@@ -61,26 +61,29 @@ async def chatToGPT4(_ctx):
         )
     except all as e:
         print_colored_text(
-                    f"Catch Exception {type(e).__name__}, Info: {e}", "red")
+            f"Catch Exception {type(e).__name__}, Info: {e}", "red")
     finally:
         return response
-    # url = 'https://api.openai.com/v1/chat/completions'
-
-    # data = {
-    #     'model': 'gpt-4',
-    #     'messages': _ctx
-    # }
-
-    # headers = {
-    #     'Content-Type': 'application/json',
-    #     'Authorization': 'Bearer '+os.getenv("OPENAI_API_KEY")
-    # }
-    # response = requests.post(url, json=data, headers=headers)
-    # if response.status_code == 200:
-    #     return response.json()
 
 
-async def main():
+async def chatToGPT4Http(_ctx):
+    url = 'https://api.openai.com/v1/chat/completions'
+
+    data = {
+        'model': 'gpt-4',
+        'messages': _ctx
+    }
+
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer '+os.getenv("OPENAI_API_KEY")
+    }
+    response = requests.post(url, json=data, headers=headers)
+    if response.status_code == 200:
+        return response.json()
+
+
+async def main(context):
     while True:
         print_colored_text("\nInput:", "green")
         user_input = input("")
@@ -92,6 +95,8 @@ async def main():
             try:
                 with open("conversation_ctx.json", "w") as json_file:
                     json.dump(context, json_file)
+                    print_colored_text(
+                        "Save conversation to conversation_ctx.json", "blue")
                 continue
             except all as e:
                 print_colored_text(
@@ -108,13 +113,15 @@ async def main():
                 print_colored_text(
                     f"Catch Exception {type(e).__name__}, Info: {e}", "red")
                 continue
-        sys.stdout.write('\n')
-        context.append({"role": "user", "content": user_input})
+        if user_input == ":regen":
+            context = context[:-1]
+        else:
+            context.append({"role": "user", "content": user_input})
         stop_event = threading.Event()
         with ThreadPoolExecutor(max_workers=1) as executor:
             spinner_thread = executor.submit(spinning_slash, stop_event)
             try:
-                gpt4_task = asyncio.create_task(chatToGPT4(context))
+                gpt4_task = asyncio.create_task(chatToGPT4Http(context))
                 response = await gpt4_task
                 stop_event.set()
                 # finish_reason = response['choices'][0]['finish_reason']
@@ -124,10 +131,14 @@ async def main():
                 print(response_txt)
                 context.append(
                     {"role": response_role, "content": response_txt})
+                with open("conversation_ctx.json", "w") as json_file:
+                    json.dump(context, json_file)
+                    print_colored_text(
+                        "Save conversation to conversation_ctx.json", "blue")
             except all as e:
                 print_colored_text(
                     f"Catch Exception {type(e).__name__}, Info: {e}", "red")
                 stop_event.set()
             finally:
                 spinner_thread.cancel()
-asyncio.run(main())
+asyncio.run(main(context=context))
