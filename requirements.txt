@@ -1,6 +1,7 @@
 accelerate==0.18.0
 aiohttp==3.8.4
 aiosignal==1.3.1
+anyio==3.6.2
 async-timeout==4.0.2
 attrs==23.1.0
 blis==0.7.9
@@ -19,6 +20,9 @@ cryptography @ file:///private/var/folders/sy/f16zz6x50xz3113nwtb9bvq00000gp/T/a
 cymem==2.0.7
 filelock==3.11.0
 frozenlist==1.3.3
+h11==0.14.0
+httpcore==0.17.0
+httpx==0.24.0
 huggingface-hub==0.13.4
 idna @ file:///private/var/folders/sy/f16zz6x50xz3113nwtb9bvq00000gp/T/abs_00jf0h4zbt/croot/idna_1666125573348/work
 Jinja2==3.1.2
@@ -52,6 +56,7 @@ ruamel.yaml.clib @ file:///private/var/folders/sy/f16zz6x50xz3113nwtb9bvq00000gp
 sentencepiece==0.1.97
 six @ file:///tmp/build/80754af9/six_1644875935023/work
 smart-open==6.3.0
+sniffio==1.3.0
 spacy==3.5.2
 spacy-legacy==3.0.12
 spacy-loggers==1.0.4

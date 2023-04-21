@@ -7,25 +7,20 @@ import asyncio
 import json
 import sys
 import argparse
-import requests
-import threading
-from concurrent.futures import ThreadPoolExecutor
+import os
+import httpx
+import json
+from typing import List
 
 load_dotenv()
 parser = argparse.ArgumentParser(description='Chat to GPT4')
 parser.add_argument('-m', '--model',
                     help='Model Id, default gpt-4')
-parser.add_argument('-t', '--tool',
-                    help='Use sdk or http api (sdk or api), default api')
 args = parser.parse_args()
 if args.model == None:
     model = 'gpt-4'
 else:
     model = args.model
-if args.tool == None:
-    tool = 'api'
-else:
-    tool = args.tool
 
 
 def print_colored_text(text, color):
@@ -42,12 +37,13 @@ def print_colored_text(text, color):
     print(f"{color_code[color]}{text}{color_code['reset']}")
 
 
-def spinning_slash(stop_event):
+async def spinning_slash():
     spinning_chars = itertools.cycle(['/', '-', '\\', '|'])
-    while not stop_event.is_set():
+    while True:
         sys.stdout.write(next(spinning_chars))
         sys.stdout.flush()
-        stop_event.wait(0.1)
+        # stop_event.wait(0.1)
+        await asyncio.sleep(0.1)
         sys.stdout.write('\b')
 
 
@@ -57,44 +53,32 @@ async def spinning_loading():
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
-async def chatToModel(_ctx, model):
-    try:
-        response = openai.ChatCompletion.create(
-            # model="davinci:ft-personal:metapath-2023-03-28-02-42-17",
-            model=model,
-            messages=_ctx,
-            temperature=1
-        )
-    except all as e:
-        print_colored_text(
-            f"Catch Exception {type(e).__name__}, Info: {e}", "red")
-        return None
-    finally:
-        return response
-
-
-async def chatToModelHttp(_ctx, model):
+async def chatToModelHttp(_ctx: List[dict], model: str):
     url = 'https://api.openai.com/v1/chat/completions'
 
     data = {
         'model': model,
-        'messages': _ctx
+        'messages': _ctx,
     }
 
     headers = {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer '+os.getenv("OPENAI_API_KEY")
+        'Authorization': f'Bearer {os.getenv("OPENAI_API_KEY")}'
     }
+    # timeout = httpx.TimeOut(connect_timeout=5, read_timeout=5 * 60, write_timeout=5)
+    timeout = httpx.Timeout(connect=None, read=None, write=None, pool=None)
     try:
-        response = requests.post(url, json=data, headers=headers)
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json=data, headers=headers, timeout=timeout)
+
         if response.status_code == 200:
             return response.json()
-    except all as e:
-        print_colored_text(
-            f"Catch Exception {type(e).__name__}, Info: {e}", "red")
+        else:
+            print(f"Error {response.status_code}: {response.text}")
+            return None
+    except Exception as e:
+        print(f"Catch exception {type(e).__name__}, Info: {e}")
         return None
-    finally:
-        return response.json()
 
 
 def saveConversation(ctxFileName, context) -> str:
@@ -113,7 +97,7 @@ def saveConversation(ctxFileName, context) -> str:
     return ctxFileName
 
 
-async def main(model, tool):
+async def main(model):
     context = [
         {"role": "system", "content": "You are a helpful assistant."}]
     ctxFileName = input(
@@ -169,38 +153,31 @@ async def main(model, tool):
             print(prompt["content"])
         else:
             context.append(prompt)
-        stop_event = threading.Event()
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            spinner_thread = executor.submit(spinning_slash, stop_event)
-            try:
-                if tool == 'api':
-                    task = chatToModelHttp(_ctx=context, model=model)
-                if tool == 'sdk':
-                    task = chatToModel(_ctx=context, model=model)
-                gpt4_task = asyncio.create_task(task)
-                response = await gpt4_task
-                stop_event.set()
-                if response != None:
-                    # finish_reason = response['choices'][0]['finish_reason']
-                    response_txt = response['choices'][0]['message']["content"]
-                    response_role = response['choices'][0]['message']["role"]
-                    print_colored_text(f"\nModel-{model}:", "green")
-                    print(response_txt)
-                    print_colored_text("="*100, "blue")
-                    context.append(
-                        {"role": response_role, "content": response_txt})
-                    try:
-                        ctxFileName = saveConversation(
-                            ctxFileName=ctxFileName, context=context)
-                    except all as e:
-                        print_colored_text(
-                            f"Catch Exception {type(e).__name__}, Info: {e}", "red")
-                    continue
-            except all as e:
-                print_colored_text(
-                    f"Catch Exception {type(e).__name__}, Info: {e}", "red")
-                stop_event.set()
-            finally:
-                spinner_thread.cancel()
-                stop_event.set()
-asyncio.run(main(model=model, tool=tool))
+        spinner_task = asyncio.create_task(spinning_slash())
+        try:
+            task = chatToModelHttp(_ctx=context, model=model)
+            task = asyncio.create_task(task)
+            response = await task
+            if response != None:
+                # finish_reason = response['choices'][0]['finish_reason']
+                response_txt = response['choices'][0]['message']["content"]
+                response_role = response['choices'][0]['message']["role"]
+                print_colored_text(f"\nModel-{model}:", "green")
+                print(response_txt)
+                print_colored_text("="*100, "blue")
+                context.append(
+                    {"role": response_role, "content": response_txt})
+                try:
+                    ctxFileName = saveConversation(
+                        ctxFileName=ctxFileName, context=context)
+                except all as e:
+                    print_colored_text(
+                        f"Catch Exception {type(e).__name__}, Info: {e}", "red")
+                continue
+        except all as e:
+            print_colored_text(
+                f"Catch Exception {type(e).__name__}, Info: {e}", "red")
+            spinner_task.cancel()
+        finally:
+            spinner_task.cancel()
+asyncio.run(main(model=model))
