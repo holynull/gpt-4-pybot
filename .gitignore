@@ -129,6 +129,6 @@ dmypy.json
 .pyre/
 .DS_Store
 .env
-*_ctx.json
+*.ctx.json
 *.tmp.json
 *.prompt.txt

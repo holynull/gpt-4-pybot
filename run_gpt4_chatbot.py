@@ -13,14 +13,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 load_dotenv()
 parser = argparse.ArgumentParser(description='Chat to GPT4')
-parser.add_argument('-c', '--conversation_ctx',
-                    help='Conversation context file')
 parser.add_argument('-m', '--model',
                     help='Model Id, default gpt-4')
 parser.add_argument('-t', '--tool',
                     help='Use sdk or http api (sdk or api), default api')
 args = parser.parse_args()
-conversation_ctx = args.conversation_ctx
 if args.model == None:
     model = 'gpt-4'
 else:
@@ -58,10 +55,6 @@ async def spinning_loading():
     print_colored_text("Loading...\n", "yellow")
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
-context = [{"role": "system", "content": "You are a helpful assistant."}]
-if conversation_ctx != None:
-    with open(conversation_ctx, "r") as file:
-        context = json.load(file)
 
 
 async def chatToModel(_ctx, model):
@@ -104,32 +97,52 @@ async def chatToModelHttp(_ctx, model):
         return response.json()
 
 
-async def main(context, model, tool):
+def saveConversation(ctxFileName, context) -> str:
+    if ctxFileName == None or ctxFileName == "":
+        _ctxFileName = input(
+            "Input your conversation name, or press entern: ")
+        if _ctxFileName != None and _ctxFileName != '':
+            ctxFileName = _ctxFileName
+        else:
+            now = datetime.datetime.now()
+            ctxFileName = now.strftime("%Y%m%d%H%M%S")
+    with open(f"{ctxFileName}.ctx.json", "w") as json_file:
+        json.dump(context, json_file)
+        print_colored_text(
+            f"Save conversation to {ctxFileName}.ctx.json", "blue")
+    return ctxFileName
+
+
+async def main(model, tool):
+    context = [
+        {"role": "system", "content": "You are a helpful assistant."}]
+    ctxFileName = input(
+        "Fill your conversation name, or press entern: ")
+    if ctxFileName != None and ctxFileName != "":
+        try:
+            with open(f"{ctxFileName}.ctx.json", "r") as file:
+                context = json.load(file)
+                print_colored_text(
+                    f"Load conversation file {ctxFileName}.ctx.json", "blue")
+        except FileNotFoundError as e:
+            print_colored_text(
+                f"Catch Exception {type(e).__name__}, Info: {e}", "red")
+            return
     while True:
-        print_colored_text("\nInput:", "green")
+        print_colored_text("Send a message: ", "green")
         user_input = input("")
         print_colored_text("="*100, "blue")
         if user_input == ":exit":
-            now = datetime.datetime.now()
-            formatted_date = now.strftime("%Y%m%d%H%M%S")
-            with open(formatted_date+"_ctx.json", "w") as json_file:
-                json.dump(context, json_file)
-                print_colored_text(
-                    "Save conversation to "+formatted_date+"_ctx.json", "blue")
+            saveConversation(ctxFileName=ctxFileName, context=context)
             break
         if user_input == ":save":
             try:
-                now = datetime.datetime.now()
-                formatted_date = now.strftime("%Y%m%d%H%M%S")
-                with open(formatted_date+"_ctx.json", "w") as json_file:
-                    json.dump(context, json_file)
-                    print_colored_text(
-                        "Save conversation to "+formatted_date+"_ctx.json", "blue")
-                continue
+                ctxFileName = saveConversation(
+                    ctxFileName=ctxFileName, context=context)
             except all as e:
                 print_colored_text(
                     f"Catch Exception {type(e).__name__}, Info: {e}", "red")
-                continue
+            continue
         if user_input.startswith(":file:"):
             filename = user_input[len(":file:"):]
             try:
@@ -176,15 +189,13 @@ async def main(context, model, tool):
                     print_colored_text("="*100, "blue")
                     context.append(
                         {"role": response_role, "content": response_txt})
-                    now = datetime.datetime.now()
-                    formatted_date = now.strftime("%Y%m%d%H%M%S")
-                    with open(formatted_date+".tmp.json", "w") as json_file:
-                        tmp = [prompt]
-                        tmp.append({"role": response_role,
-                                    "content": response_txt})
-                        json.dump(tmp, json_file)
+                    try:
+                        ctxFileName = saveConversation(
+                            ctxFileName=ctxFileName, context=context)
+                    except all as e:
                         print_colored_text(
-                            "Save conversation to "+formatted_date+".tmp.json", "blue")
+                            f"Catch Exception {type(e).__name__}, Info: {e}", "red")
+                    continue
             except all as e:
                 print_colored_text(
                     f"Catch Exception {type(e).__name__}, Info: {e}", "red")
@@ -192,4 +203,4 @@ async def main(context, model, tool):
             finally:
                 spinner_thread.cancel()
                 stop_event.set()
-asyncio.run(main(context=context, model=model, tool=tool))
+asyncio.run(main(model=model, tool=tool))
