@@ -11,8 +11,14 @@ import os
 import httpx
 import json
 from typing import List
+import pathlib
 
-load_dotenv()
+if getattr(sys, 'frozen', False):
+    script_location = pathlib.Path(sys.executable).parent.resolve()
+else:
+    script_location = pathlib.Path(__file__).parent.resolve()
+load_dotenv(dotenv_path=script_location / '.env')
+
 parser = argparse.ArgumentParser(description='Chat to GPT4')
 parser.add_argument('-m', '--model',
                     help='Model Id, default gpt-4')
@@ -84,13 +90,13 @@ async def chatToModelHttp(_ctx: List[dict], model: str):
 def saveConversation(ctxFileName, context) -> str:
     if ctxFileName == None or ctxFileName == "":
         _ctxFileName = input(
-            "Input your conversation name, or press entern: ")
+            "Enter your conversation name (option): ")
         if _ctxFileName != None and _ctxFileName != '':
             ctxFileName = _ctxFileName
         else:
             now = datetime.datetime.now()
             ctxFileName = now.strftime("%Y%m%d%H%M%S")
-    with open(f"{ctxFileName}.ctx.json", "w") as json_file:
+    with open(f"{script_location}/{ctxFileName}.ctx.json", "w") as json_file:
         json.dump(context, json_file)
         print_colored_text(
             f"Save conversation to {ctxFileName}.ctx.json", "blue")
@@ -101,7 +107,7 @@ async def main(model):
     context = [
         {"role": "system", "content": "You are a helpful assistant."}]
     ctxFileName = input(
-        "Fill your conversation name, or press entern: ")
+        "Enter your conversation name (option): ")
     if ctxFileName != None and ctxFileName != "":
         try:
             with open(f"{ctxFileName}.ctx.json", "r") as file:
@@ -133,7 +139,7 @@ async def main(model):
                     user_input = prompt_file.read()
                     print_colored_text("\nFile content:", "cyan")
                     print(user_input)
-                    print_colored_text("="*100, "blue")
+                    print_colored_text("="*70, "blue")
             except all as e:
                 print_colored_text(
                     f"Catch Exception {type(e).__name__}, Info: {e}", "red")
@@ -143,7 +149,7 @@ async def main(model):
             for c in context:
                 print_colored_text(c['role']+":", "green")
                 print(c['content'])
-            print_colored_text("="*100, "blue")
+            print_colored_text("="*70, "blue")
             continue
         prompt = {"role": "user", "content": user_input}
         if user_input == ":regen":
@@ -163,7 +169,7 @@ async def main(model):
                 response_role = response['choices'][0]['message']["role"]
                 print_colored_text(f"\nModel-{model}:", "green")
                 print(response_txt)
-                print_colored_text("="*100, "blue")
+                print_colored_text("="*70, "blue")
                 context.append(
                     {"role": response_role, "content": response_txt})
                 try:
