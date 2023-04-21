@@ -27,3 +27,5 @@ You can input `:file:` before a content file name as the input message's content
 Ensure the save conversation history data, you can input `:save` to save conversation context data.
 
 Input `:regen` to regenerate the last response.
+
+Input `:history` to show all conversation history.

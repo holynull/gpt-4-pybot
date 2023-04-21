@@ -108,6 +108,7 @@ async def main(context, model, tool):
     while True:
         print_colored_text("\nInput:", "green")
         user_input = input("")
+        print_colored_text("="*100, "blue")
         if user_input == ":exit":
             now = datetime.datetime.now()
             formatted_date = now.strftime("%Y%m%d%H%M%S")
@@ -136,10 +137,18 @@ async def main(context, model, tool):
                     user_input = prompt_file.read()
                     print_colored_text("\nFile content:", "cyan")
                     print(user_input)
+                    print_colored_text("="*100, "blue")
             except all as e:
                 print_colored_text(
                     f"Catch Exception {type(e).__name__}, Info: {e}", "red")
                 continue
+        if user_input == ":history":
+            print_colored_text("\nConversation History:", "blue")
+            for c in context:
+                print_colored_text(c['role']+":", "green")
+                print(c['content'])
+            print_colored_text("="*100, "blue")
+            continue
         prompt = {"role": "user", "content": user_input}
         if user_input == ":regen":
             prompt = context[len(context)-2]
@@ -162,8 +171,9 @@ async def main(context, model, tool):
                     # finish_reason = response['choices'][0]['finish_reason']
                     response_txt = response['choices'][0]['message']["content"]
                     response_role = response['choices'][0]['message']["role"]
-                    print_colored_text("\nGPT-4:", "green")
+                    print_colored_text(f"\nModel-{model}:", "green")
                     print(response_txt)
+                    print_colored_text("="*100, "blue")
                     context.append(
                         {"role": response_role, "content": response_txt})
                     now = datetime.datetime.now()
