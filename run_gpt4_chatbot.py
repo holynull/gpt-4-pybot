@@ -110,14 +110,12 @@ async def main(model):
         "Enter your conversation name (option): ")
     if ctxFileName != None and ctxFileName != "":
         try:
-            with open(f"{ctxFileName}.ctx.json", "r") as file:
+            with open(f"{script_location}/{ctxFileName}.ctx.json", "r") as file:
                 context = json.load(file)
                 print_colored_text(
                     f"Load conversation file {ctxFileName}.ctx.json", "blue")
         except FileNotFoundError as e:
-            print_colored_text(
-                f"Catch Exception {type(e).__name__}, Info: {e}", "red")
-            return
+            print_colored_text(f"Create a new conversation: {ctxFileName}", "blue")
     while True:
         print_colored_text("Send a message: ", "green")
         user_input = input("")
@@ -135,7 +133,7 @@ async def main(model):
         if user_input.startswith(":file:"):
             filename = user_input[len(":file:"):]
             try:
-                with open(filename, "r") as prompt_file:
+                with open(f"{script_location}/{filename}", "r") as prompt_file:
                     user_input = prompt_file.read()
                     print_colored_text("\nFile content:", "cyan")
                     print(user_input)
