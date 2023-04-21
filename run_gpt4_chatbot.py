@@ -115,7 +115,6 @@ async def main(model):
     while True:
         print_colored_text("Send a message: ", "green")
         user_input = input("")
-        print_colored_text("="*100, "blue")
         if user_input == ":exit":
             saveConversation(ctxFileName=ctxFileName, context=context)
             break
@@ -180,4 +179,5 @@ async def main(model):
             spinner_task.cancel()
         finally:
             spinner_task.cancel()
-asyncio.run(main(model=model))
+if __name__ == "__main__":
+    asyncio.run(main(model=model))
